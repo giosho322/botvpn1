@@ -227,18 +227,20 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "📂 Мои конфиги":
-        configs = db_user_configs(user.id)
-        if not configs:
-            return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
-        for name, octet, end, priv in configs:
-            conf = generate_client_config(priv, octet)
-            cfile = f"{user.id}_{name}.conf"
-            qfile = f"{user.id}_{name}.png"
-            with open(cfile, "w") as f: f.write(conf)
-            generate_qr(conf, qfile)
-            await context.bot.send_document(uid, InputFile(cfile, filename=os.path.basename(cfile)), caption=f"Ваша подписка до {end}")
-            os.remove(cfile)
-            os.remove(qfile)
+    configs = db_user_configs(user.id)
+    if not configs:
+        return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
+    for name, octet, end, priv in configs:
+        conf = generate_client_config(priv, octet)
+        cfile = f"{user.id}_{name}.conf"
+        qfile = f"{user.id}_{name}.png"
+        with open(cfile, "w") as f: f.write(conf)
+        generate_qr(conf, qfile)
+        await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
+        await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
+        os.remove(cfile)
+        os.remove(qfile)
+
 
     elif text == "📋 Инструкция":
         await update.message.reply_text(
@@ -299,8 +301,8 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         qfile = f"{uid}_{name}.png"
         with open(cfile, "w") as f: f.write(conf)
         generate_qr(conf, qfile)
-        await context.bot.send_document(uid, InputFile(cfile, filename=os.path.basename(cfile)), caption=f"Ваша подписка до {end}")
-        await context.bot.send_photo(uid, InputFile(qfile), caption="QR-код")
+        await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
+        await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
         os.remove(cfile)
         os.remove(qfile)
         db_payment_set_status(pid, "confirmed", name)
