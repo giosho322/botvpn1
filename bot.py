@@ -194,9 +194,19 @@ def remove_peer_from_wg(public_key):
         subprocess.run(cmd, check=True)
 
 def generate_client_config(priv, octet, psk=None):
-    return f"""[Interface]\nPrivateKey = {priv}\nAddress = {WG_SUBNET}.{octet}/24\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = {SERVER_PUBLIC_KEY}\nEndpoint = {SERVER_ENDPOINT}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"""
+    config = f"""[Interface]
+PrivateKey = {priv}
+Address = {WG_SUBNET}.{octet}/24
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = {SERVER_PUBLIC_KEY}
+Endpoint = {SERVER_ENDPOINT}
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+"""
     if psk:
-        config = config.replace("[Peer]", f"[Peer]\nPresharedKey = {psk}")
+        config += f"PresharedKey = {psk}\n"
     return config
 def generate_qr(text, path):
     qrcode.make(text).save(path)
@@ -339,15 +349,46 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             add_peer_to_wg(pub, octet, psk)
         except Exception as e:
             return await query.edit_message_text(f"Ошибка WG: {e}")
-        conf = generate_client_config(priv, octet, psk)
-        cfile = f"{uid}_{name}.conf"
-        qfile = f"{uid}_{name}.png"
-        with open(cfile, "w") as f: f.write(conf)
-        generate_qr(conf, qfile)
-        await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
-        await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
-        os.remove(cfile)
-        os.remove(qfile)
+        try:
+            # Генерируем конфиг с PSK
+            conf = generate_client_config(priv, octet, psk)
+            cfile = f"{user.id}_{name}.conf"
+            
+            # Сохраняем с правильным расширением
+            with open(cfile, "w", encoding='utf-8') as f:
+                f.write(conf)
+            
+            # Явно указываем filename при отправке
+            with open(cfile, "rb") as f:
+                await context.bot.send_document(
+                    chat_id=user.id,
+                    document=InputFile(f, filename=f"wg_{name}.conf"),  # Явное указание имени
+                    caption=f"Конфиг до {end}"
+                )
+            
+            # Генерация QR-кода
+            qfile = f"{user.id}_{name}.png"
+            generate_qr(conf, qfile)
+            
+            if os.path.exists(qfile):
+                with open(qfile, "rb") as f:
+                    await context.bot.send_photo(
+                        chat_id=user.id,
+                        photo=InputFile(f, filename=f"wg_{name}.png"),
+                        caption="QR-код для импорта"
+                    )
+            
+        except Exception as e:
+            logging.error(f"Ошибка отправки: {e}")
+            await context.bot.send_message(
+                chat_id=user.id,
+                text=f"Произошла ошибка: {str(e)}"
+            )
+        finally:
+            # Удаление временных файлов
+            for f in [cfile, qfile]:
+                if os.path.exists(f):
+                    os.remove(f)
         db_payment_set_status(pid, "confirmed", name)
         return await query.edit_message_text(f"Выполнено: конфиг выдан ID {pid}")
 
