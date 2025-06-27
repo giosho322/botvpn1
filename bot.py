@@ -45,8 +45,7 @@ def db_init():
         start_date DATE,
         end_date DATE,
         public_key TEXT,
-        private_key TEXT,
-        preshared_key TEXT
+        private_key TEXT
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +105,7 @@ def db_get_payment(payment_id):
     conn.close()
     return row
 
-def db_sub_add(user_id, config_name, public_key, private_key, preshared_key, days=30):
+def db_sub_add(user_id, config_name, public_key, private_key, days=30):
     now = datetime.date.today()
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -127,18 +126,18 @@ def db_sub_add(user_id, config_name, public_key, private_key, preshared_key, day
     octet = last + 1
     end = now + datetime.timedelta(days=days)
     c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key, preshared_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)
+        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, config_name, octet, now, end, public_key, private_key)
     )
     conn.commit()
     conn.close()
     return octet, end, True
 
 def db_user_configs(user_id):
-    today = datetime.date.today().isoformat()
+    today = datetime.date.today().isoformat()  # <-- теперь today строка '2025-06-27'
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT config_name, ip_last_octet, end_date, private_key, preshared_key FROM subs WHERE user_id=? AND end_date>=?",
+    c.execute("SELECT config_name, ip_last_octet, end_date, private_key FROM subs WHERE user_id=? AND end_date>=?",
               (user_id, today))
     rows = c.fetchall()
     conn.close()
@@ -147,7 +146,7 @@ def db_user_configs(user_id):
 def db_get_peer_by_public_key(public_key):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT user_id, config_name, ip_last_octet, end_date, private_key, preshared_key FROM subs WHERE public_key=?",
+    c.execute("SELECT user_id, config_name, ip_last_octet, end_date, private_key FROM subs WHERE public_key=?",
               (public_key,))
     row = c.fetchone()
     conn.close()
@@ -176,38 +175,18 @@ def generate_keys():
     pub = subprocess.getoutput(f"echo '{priv}' | wg pubkey")
     return priv, pub
 
-def generate_psk():
-    return subprocess.getoutput("wg genpsk")
-
-def add_peer_to_wg(public_key, ip_octet, preshared_key=None):
+def add_peer_to_wg(public_key, ip_octet):
     cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
            "peer", public_key, "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"]
-    if preshared_key:
-        cmd += ["preshared-key", "/dev/stdin"]
-        subprocess.run(cmd, input=preshared_key.encode(), check=True)
-    else:
-        subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True)
 
 def remove_peer_from_wg(public_key):
     cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
            "peer", public_key, "remove"]
     subprocess.run(cmd, check=True)
 
-def generate_client_config(priv, octet, psk=None):
-    config = f"""[Interface]
-PrivateKey = {priv}
-Address = {WG_SUBNET}.{octet}/24
-DNS = 1.1.1.1
-
-[Peer]
-PublicKey = {SERVER_PUBLIC_KEY}
-Endpoint = {SERVER_ENDPOINT}
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
-"""
-    if psk:
-        config = config.replace("[Peer]", f"[Peer]\nPresharedKey = {psk}")
-    return config
+def generate_client_config(priv, octet):
+    return f"""[Interface]\nPrivateKey = {priv}\nAddress = {WG_SUBNET}.{octet}/24\nDNS = 1.1.1.1\n\n[Peer]\nPublicKey = {SERVER_PUBLIC_KEY}\nEndpoint = {SERVER_ENDPOINT}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"""
 
 def generate_qr(text, path):
     qrcode.make(text).save(path)
@@ -251,27 +230,32 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         configs = db_user_configs(user.id)
         if not configs:
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
-        for name, octet, end, priv, psk in configs:
+        # цикл должен идти ТОЛЬКО если конфиги есть!
+        for name, octet, end, priv in configs:
             print("ОТЛАДКА: отправляем конфиг для", name)
-            conf = generate_client_config(priv, octet, psk)
+            conf = generate_client_config(priv, octet)
             print("CONF CONTENT:\n", conf)
             cfile = f"{user.id}_{name}.conf"
             qfile = f"{user.id}_{name}.png"
-
+    
+            # Сохраняем конфиг
             with open(cfile, "w", encoding="utf-8") as f_conf:
                 f_conf.write(conf)
             print("CONF FILE EXISTS:", os.path.exists(cfile), "SIZE:", os.path.getsize(cfile))
-
+    
+            # Генерируем QR
             generate_qr(conf, qfile)
             print("QR FILE EXISTS:", os.path.exists(qfile), "SIZE:", os.path.getsize(qfile))
-
+    
             try:
+                # Отправляем .conf
                 with open(cfile, "rb") as f:
                     await context.bot.send_document(
                         chat_id=user.id,
                         document=InputFile(f, filename=f"{name}.conf"),
                         caption=f"{name} до {end}"
                     )
+                # Отправляем QR-код
                 with open(qfile, "rb") as f:
                     await context.bot.send_photo(
                         chat_id=user.id,
@@ -332,13 +316,12 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         uid, _ = pay
         name = f"sub_{pid}"
         priv, pub = generate_keys()
-        psk = generate_psk()
-        octet, end, _ = db_sub_add(uid, name, pub, priv, psk)
+        octet, end, _ = db_sub_add(uid, name, pub, priv)
         try:
-            add_peer_to_wg(pub, octet, psk)
+            add_peer_to_wg(pub, octet)
         except Exception as e:
             return await query.edit_message_text(f"Ошибка WG: {e}")
-        conf = generate_client_config(priv, octet, psk)
+        conf = generate_client_config(priv, octet)
         cfile = f"{uid}_{name}.conf"
         qfile = f"{uid}_{name}.png"
         with open(cfile, "w") as f: f.write(conf)
@@ -370,8 +353,8 @@ def peer_watcher():
         for pub in active:
             if pub not in peers:
                 try:
-                    _, _, octet, _, _, psk = db_get_peer_by_public_key(pub)
-                    add_peer_to_wg(pub, octet, psk)
+                    _, _, octet, _, _ = db_get_peer_by_public_key(pub)
+                    add_peer_to_wg(pub, octet)
                 except:
                     pass
         time.sleep(1800)
