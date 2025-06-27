@@ -232,6 +232,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not configs:
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
             for name, octet, end, priv in configs:
+                print("ОТЛАДКА: отправляем конфиг для", name)
                 conf = generate_client_config(priv, octet)
                 print("CONF CONTENT:\n", conf)
                 cfile = f"{user.id}_{name}.conf"
