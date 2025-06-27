@@ -193,20 +193,19 @@ def remove_peer_from_wg(public_key):
     else:
         subprocess.run(cmd, check=True)
 
-def generate_client_config(priv, octet, psk=None):
+def generate_client_config(private_key, ip_last_octet, preshared_key=None):
     config = f"""[Interface]
-PrivateKey = {priv}
-Address = {WG_SUBNET}.{octet}/24
+PrivateKey = {private_key}
+Address = 10.8.0.{ip_last_octet}/24  # Используем ту же подсеть, что и wg-easy
 DNS = 1.1.1.1
 
 [Peer]
 PublicKey = {SERVER_PUBLIC_KEY}
+PresharedKey = {preshared_key}  # Переносим перед AllowedIPs
 Endpoint = {SERVER_ENDPOINT}
-AllowedIPs = 0.0.0.0/0
+AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 """
-    if psk:
-        config += f"PresharedKey = {psk}\n"
     return config
 def generate_qr(text, path):
     qrcode.make(text).save(path)
