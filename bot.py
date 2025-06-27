@@ -228,18 +228,19 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif text == "📂 Мои конфиги":
         configs = db_user_configs(user.id)
-    if not configs:
-        return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
-    for name, octet, end, priv in configs:
-        conf = generate_client_config(priv, octet)
-        cfile = f"{user.id}_{name}.conf"
-        qfile = f"{user.id}_{name}.png"
-        with open(cfile, "w") as f: f.write(conf)
-        generate_qr(conf, qfile)
-        await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
-        await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
-        os.remove(cfile)
-        os.remove(qfile)
+        if not configs:
+            return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
+        for name, octet, end, priv in configs:
+            conf = generate_client_config(priv, octet)
+            cfile = f"{user.id}_{name}.conf"
+            qfile = f"{user.id}_{name}.png"
+            with open(cfile, "w") as f: f.write(conf)
+            generate_qr(conf, qfile)
+            await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
+            await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
+            os.remove(cfile)
+            os.remove(qfile)
+
     elif text == "📋 Инструкция":
         await update.message.reply_text(
             f"📋 Инструкция по настройке VPN:\n\n"
@@ -265,7 +266,6 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Отвечаем быстро, даже ночью. Только не тупи, сразу пиши суть проблемы и свой ID: <code>{user.id}</code>",
             parse_mode="HTML"
         )
-
 async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user = query.from_user
