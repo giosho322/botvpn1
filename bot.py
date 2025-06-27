@@ -191,7 +191,7 @@ def remove_peer_from_wg(public_key):
         "docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
         "peer", public_key, "remove"
     ]
-    subprocess.run(cmd, check=True)
+subprocess.run(cmd, check=True)
 
 def generate_client_config(private_key, ip_octet):
     return f"""[Interface]
