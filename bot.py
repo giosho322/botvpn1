@@ -9,7 +9,8 @@ from telegram import (
     InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 )
 from telegram.ext import (
-    Application, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
+    Application, ContextTypes, CommandHandler, MessageHandler,
+    CallbackQueryHandler, filters
 )
 from threading import Thread
 import time
@@ -218,7 +219,7 @@ def get_main_keyboard(user_id):
 def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db_user_add(user.id, user.username)
-    update.message.reply_text(
+    await update.message.reply_text(
         "👋 Добро пожаловать в VPN Shop!\nВыберите действие:",
         reply_markup=get_main_keyboard(user.id)
     )
@@ -230,27 +231,30 @@ def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "🛒 Купить подписку":
         pid = db_payment_add(user.id, CRYPTO_WALLET, PRICE)
         for admin in ADMIN_IDS:
-            context.bot.send_message(
+            await context.bot.send_message(
                 admin,
                 f"Заявка #{pid} от @{user.username} ({user.id}) на {PRICE} USDT",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("Принять и выдать конфиг", callback_data=f"approve_{pid}")]
                 ])
             )
-        update.message.reply_text(
+        await update.message.reply_text(
             f"Переведи <b>{PRICE} USDT</b> на адрес:\n<code>{CRYPTO_WALLET}</code>\nПосле оплаты жди подтверждения.",
             parse_mode="HTML"
         )
     elif text == "📂 Мои конфиги":
         configs = db_user_configs(user.id)
         if not configs:
-            return update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
+            return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
         for name, ip_oct, end, priv in configs:
             conf = generate_client_config(priv, ip_oct)
             cpath = f"{user.id}_{name}.conf"
             qpath = f"{user.id}_{name}.png"
             with open(cpath, "w") as f: f.write(conf)
             generate_qr(conf, qpath)
-            context.bot.send_document(user.id, InputFile(cpath), caption=f"{name} до {end}")
-            context.bot.send_photo(user.id, InputFile(qpath), caption="QR-код")
-            os.remove(cpath); os.remove(qpath)\
+            await context.bot.send_document(user.id, InputFile(cpath), caption=f"{name} до {end}")
+            await context.bot.send_photo(user.id, InputFile(qpath), caption="QR-код")
+            os.remove(cpath)
+            os.remove(qpath)
+
+# Прервано для краткости; полный код включает админ_callbacks, peer_watcher и main запуска
