@@ -49,7 +49,7 @@ PersistentKeepalive = 25
         update.message.reply_text(f"Ошибка: {e}")
 
 # Запуск бота
-updater = Updater(os.getenv("8155141877:AAHspExiqZFAfDmQc2VpobSz-gseFzDKKmg"))
+updater = Updater(os.getenv("BOT_TOKEN"))
 updater.dispatcher.add_handler(CommandHandler("add", add_client))
 updater.start_polling()
 updater.idle()
