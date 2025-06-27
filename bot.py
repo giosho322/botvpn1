@@ -23,9 +23,41 @@ WG_INTERFACE = "wg0"
 WG_SUBNET = "10.8.0"
 SERVER_PUBLIC_KEY = "hRVLkkxJNDpYGiGdmg/YRFOAVPrwJMj9zHZeb1l9aQU="
 SERVER_ENDPOINT = "80.74.28.21:51820"
-DOCKER_CONTAINER = "wg-easy"  # Имя твоего контейнера! Проверь через `docker ps`
+DOCKER_CONTAINER = "wg-easy"
 
 logging.basicConfig(level=logging.INFO)
+
+# ДОБАВЛЕНО! Без этой функции будет ошибка NameError.
+def db_init():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT,
+        is_admin INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS subs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        config_name TEXT,
+        ip_last_octet INTEGER,
+        start_date DATE,
+        end_date DATE,
+        public_key TEXT,
+        private_key TEXT
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        wallet TEXT,
+        amount REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status TEXT,
+        config_name TEXT
+    )''')
+    conn.commit()
+    conn.close()
 
 # ... (все функции базы данных без изменений)
 
@@ -34,7 +66,6 @@ def generate_keys():
     public_key = subprocess.getoutput(f"echo '{private_key}' | wg pubkey")
     return private_key, public_key
 
-# ------ вот эти две функции изменяем ------
 def add_peer_to_wg(public_key, ip_octet):
     cmd = [
         "docker", "exec", DOCKER_CONTAINER,
@@ -51,7 +82,6 @@ def remove_peer_from_wg(public_key):
         "peer", public_key, "remove"
     ]
     subprocess.run(cmd, check=True)
-# ------------------------------------------
 
 def generate_client_config(private_key, ip_octet):
     return f"""[Interface]
