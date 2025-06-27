@@ -211,7 +211,6 @@ def generate_qr(config_text, path):
     img.save(path)
 
 # Клавиатуры
-
 def get_main_keyboard(user_id):
     kb = [
         [KeyboardButton("🛒 Купить подписку"), KeyboardButton("📂 Мои конфиги")],
@@ -292,7 +291,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         txt = "Заявки:\n" + "\n".join(f"{pid}:{uid}:{amt}" for pid,uid,amt in rows)
         await q.edit_message_text(txt)
-    elif data.startswith("approve_"):
+    elif data.startswith("approve_":
         pid = int(data.split("_")[1])
         pay = db_get_payment(pid)
         if not pay:
@@ -316,23 +315,29 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await q.answer()
 
+
 def db_users_stat():
     conn = sqlite3.connect(DB); c = conn.cursor()
     c.execute("SELECT id FROM users"); ids = [r[0] for r in c.fetchall()]
     conn.close(); return ids
 
 # Наблюдатель за пирами
- def peer_watcher():
-     while True:
-         for pub in db_get_expired_peers():
-             try: remove_peer_from_wg(pub)
-             except Exception: pass
-         for pub in db_get_active_peers():
-             peers = subprocess.getoutput(f"docker exec wg-easy wg show {WG_INTERFACE} peers")
-             if pub not in peers:
-                 try: remove_peer_from_wg(pub)
-                 except: pass
-         time.sleep(1800)
+def peer_watcher():
+    while True:
+        for pub in db_get_expired_peers():
+            try:
+                remove_peer_from_wg(pub)
+            except Exception:
+                pass
+        active = db_get_active_peers()
+        peers = subprocess.getoutput(f"docker exec wg-easy wg show {WG_INTERFACE} peers")
+        for pub in active:
+            if pub not in peers:
+                try:
+                    add_peer_to_wg(pub, db_get_peer_by_public_key(pub)[2])
+                except:
+                    pass
+        time.sleep(1800)
 
 # Основной запуск
 if __name__ == "__main__":
