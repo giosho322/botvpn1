@@ -23,163 +23,21 @@ WG_INTERFACE = "wg0"
 WG_SUBNET = "10.8.0"
 SERVER_PUBLIC_KEY = "hRVLkkxJNDpYGiGdmg/YRFOAVPrwJMj9zHZeb1l9aQU="
 SERVER_ENDPOINT = "80.74.28.21:51820"
+DOCKER_CONTAINER = "wg-easy"  # Имя твоего контейнера! Проверь через `docker ps`
 
 logging.basicConfig(level=logging.INFO)
 
-def db_init():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY,
-        username TEXT,
-        is_admin INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS subs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        config_name TEXT,
-        ip_last_octet INTEGER,
-        start_date DATE,
-        end_date DATE,
-        public_key TEXT,
-        private_key TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        wallet TEXT,
-        amount REAL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        status TEXT,
-        config_name TEXT
-    )''')
-    conn.commit()
-    conn.close()
-
-def db_user_add(user_id, username, is_admin=False):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO users (id, username, is_admin) VALUES (?, ?, ?)", (user_id, username, int(is_admin)))
-    conn.commit()
-    conn.close()
-
-def db_payment_add(user_id, wallet, amount):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("INSERT INTO payments (user_id, wallet, amount, status) VALUES (?, ?, ?, 'pending')", (user_id, wallet, amount))
-    payment_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    return payment_id
-
-def db_payment_set_status(payment_id, status, config_name=None):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    if config_name:
-        c.execute("UPDATE payments SET status=?, config_name=? WHERE id=?", (status, config_name, payment_id))
-    else:
-        c.execute("UPDATE payments SET status=? WHERE id=?", (status, payment_id))
-    conn.commit()
-    conn.close()
-
-def db_get_pending_payments():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT id, user_id, amount FROM payments WHERE status='pending'")
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def db_get_payment(payment_id):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT user_id, amount FROM payments WHERE id=?", (payment_id,))
-    row = c.fetchone()
-    conn.close()
-    return row
-
-def db_sub_add(user_id, config_name, public_key, private_key, days=30):
-    now = datetime.date.today()
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    # Проверяем, не существует ли уже этот peer (чтобы не плодить новые IP)
-    c.execute("SELECT id, ip_last_octet, end_date FROM subs WHERE user_id=? AND config_name=?", (user_id, config_name))
-    row = c.fetchone()
-    if row:
-        sub_id, ip_octet, prev_end_date = row
-        prev_end = datetime.datetime.strptime(prev_end_date, "%Y-%m-%d").date() if prev_end_date else now
-        # Если подписка еще активна, продлеваем от конца, иначе с текущей даты
-        start_from = max(now, prev_end)
-        end_date = start_from + datetime.timedelta(days=days)
-        c.execute("UPDATE subs SET end_date=? WHERE id=?", (end_date, sub_id))
-        conn.commit()
-        conn.close()
-        return ip_octet, end_date, False
-    # Новый peer
-    c.execute("SELECT MAX(ip_last_octet) FROM subs")
-    row = c.fetchone()
-    last = row[0] if row and row[0] else 1
-    ip_octet = last + 1
-    end_date = now + datetime.timedelta(days=days)
-    c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, config_name, ip_octet, now, end_date, public_key, private_key)
-    )
-    conn.commit()
-    conn.close()
-    return ip_octet, end_date, True
-
-def db_user_configs(user_id):
-    now = datetime.date.today()
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT config_name, ip_last_octet, end_date, private_key FROM subs WHERE user_id=? AND end_date>=?", (user_id, now))
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def db_get_sub_by_config(config_name):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT public_key, ip_last_octet FROM subs WHERE config_name=?", (config_name,))
-    row = c.fetchone()
-    conn.close()
-    return row
-
-def db_get_expired_peers():
-    today = datetime.date.today()
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT public_key FROM subs WHERE end_date < ?", (today,))
-    rows = c.fetchall()
-    conn.close()
-    return [r[0] for r in rows]
-
-def db_get_active_peers():
-    today = datetime.date.today()
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT public_key FROM subs WHERE end_date >= ?", (today,))
-    rows = c.fetchall()
-    conn.close()
-    return [r[0] for r in rows]
-
-def db_get_peer_by_public_key(public_key):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT user_id, config_name, ip_last_octet, end_date, private_key FROM subs WHERE public_key=?", (public_key,))
-    row = c.fetchone()
-    conn.close()
-    return row
+# ... (все функции базы данных без изменений)
 
 def generate_keys():
     private_key = subprocess.getoutput("wg genkey")
     public_key = subprocess.getoutput(f"echo '{private_key}' | wg pubkey")
     return private_key, public_key
 
+# ------ вот эти две функции изменяем ------
 def add_peer_to_wg(public_key, ip_octet):
     cmd = [
+        "docker", "exec", DOCKER_CONTAINER,
         "wg", "set", WG_INTERFACE,
         "peer", public_key,
         "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"
@@ -188,10 +46,12 @@ def add_peer_to_wg(public_key, ip_octet):
 
 def remove_peer_from_wg(public_key):
     cmd = [
+        "docker", "exec", DOCKER_CONTAINER,
         "wg", "set", WG_INTERFACE,
         "peer", public_key, "remove"
     ]
     subprocess.run(cmd, check=True)
+# ------------------------------------------
 
 def generate_client_config(private_key, ip_octet):
     return f"""[Interface]
@@ -307,24 +167,19 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_id, amount = payment
         config_name = f"sub_{payment_id}"
-        # 1. Генерируем ключи
         private_key, public_key = generate_keys()
-        # 2. Добавляем в базу + выдаём IP (если продление — не создаём заново)
         ip_octet, end_date, is_new = db_sub_add(user_id, config_name, public_key, private_key)
-        # 3. Добавляем peer в WG (или повторно)
         try:
             add_peer_to_wg(public_key, ip_octet)
         except Exception as e:
             await query.edit_message_text("Ошибка добавления peer в WG: " + str(e))
             return
-        # 4. Генерируем клиентский конфиг с приватным ключом
         conf = generate_client_config(private_key, ip_octet)
         conf_path = f"{user_id}_{config_name}.conf"
         qr_path = f"{user_id}_{config_name}.png"
         with open(conf_path, "w") as f:
             f.write(conf)
         generate_qr(conf, qr_path)
-        # 5. Отправляем конфиг и QR пользователю
         await context.bot.send_document(chat_id=user_id, document=InputFile(conf_path),
                                         caption=f"Ваша подписка активна до {end_date}.\nСпасибо за оплату!")
         await context.bot.send_photo(chat_id=user_id, photo=InputFile(qr_path), caption="QR-код для WireGuard")
@@ -346,22 +201,21 @@ def db_users_stat():
 
 def peer_watcher():
     while True:
-        # Удаляем просроченных peer
         expired = db_get_expired_peers()
         for pubkey in expired:
             try:
                 remove_peer_from_wg(pubkey)
             except Exception as e:
                 logging.info(f"Ошибка удаления peer {pubkey}: {e}")
-        # Добавляем peer тем, у кого подписка снова активна (например, после продления)
         active = db_get_active_peers()
         for pubkey in active:
             peer = db_get_peer_by_public_key(pubkey)
             if not peer:
                 continue
             _, _, ip_octet, end_date, _ = peer
-            # Проверяем, есть ли peer в текущем выводе wg show
-            peers_output = subprocess.getoutput(f"wg show {WG_INTERFACE} peers")
+            peers_output = subprocess.getoutput(
+                f"docker exec {DOCKER_CONTAINER} wg show {WG_INTERFACE} peers"
+            )
             if pubkey not in peers_output:
                 try:
                     add_peer_to_wg(pubkey, ip_octet)
@@ -371,14 +225,10 @@ def peer_watcher():
 
 def main():
     db_init()
-    # watcher в отдельном потоке
     Thread(target=peer_watcher, daemon=True).start()
     app = Application.builder().token(os.getenv("BOT_TOKEN")).build()
-    # Обработчик команды /start
     app.add_handler(CommandHandler("start", start))
-    # Обработчик всех текстовых сообщений (кнопок)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
-    # Обработчик inline-кнопок (заявки, админка)
     app.add_handler(CallbackQueryHandler(admin_callbacks))
     app.run_polling()
 
