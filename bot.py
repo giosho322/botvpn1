@@ -48,7 +48,7 @@ def db_init():
         start_date DATE,
         end_date DATE,
         public_key TEXT,
-        private_key TEXT
+        private_key TEXT,
         preshared_key TEXT
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS payments (
@@ -130,15 +130,15 @@ def db_sub_add(user_id, config_name, public_key, private_key, preshared_key=None
     octet = last + 1
     end = now + datetime.timedelta(days=int(days))
     c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key, preshared_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",  # 8 параметров
-        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)  # 8 значений
+        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key, preshared_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)
     )
     conn.commit()
     conn.close()
     return octet, end, True
 
 def db_user_configs(user_id):
-    today = datetime.date.today().isoformat()  # <-- теперь today строка '2025-06-27'
+    today = datetime.date.today().isoformat()
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("SELECT config_name, ip_last_octet, end_date, private_key, preshared_key FROM subs WHERE user_id=? AND end_date>=?",
@@ -182,22 +182,21 @@ def generate_keys():
 def add_peer_to_wg(public_key, ip_octet, preshared_key=None):
     cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
            "peer", public_key, "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"]
-    subprocess.run(cmd, check=True)
-
-def remove_peer_from_wg(public_key):
-    cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
-           "peer", public_key, "remove"]
     if preshared_key:
         cmd += ["preshared-key", "/dev/stdin"]
         subprocess.run(cmd, input=preshared_key.encode(), check=True)
     else:
         subprocess.run(cmd, check=True)
 
-def generate_client_config(private_key, public_key, preshared_key=None):
-    ip = get_next_ip()  # Функция из примера выше
+def remove_peer_from_wg(public_key):
+    cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
+           "peer", public_key, "remove"]
+    subprocess.run(cmd, check=True)
+
+def generate_client_config(private_key, ip_octet, preshared_key=None):
     return f"""[Interface]
 PrivateKey = {private_key}
-Address = 10.8.0.{ip}/24
+Address = {WG_SUBNET}.{ip_octet}/32
 DNS = 1.1.1.1
 
 [Peer]
@@ -207,8 +206,7 @@ Endpoint = {SERVER_ENDPOINT}
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 """
-    # Убедимся, что в конце ровно один перенос строки
-    return config.rstrip('\n') + '\n'
+
 def generate_qr(text, path):
     qrcode.make(text).save(path)
 
@@ -241,7 +239,6 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton("Принять и выдать конфиг", callback_data=f"approve_{pid}")]]
                 )
-            )
         await update.message.reply_text(
             f"Переведи <b>{PRICE} USDT</b> на адрес:\n<code>{CRYPTO_WALLET}</code>\nПосле оплаты жди подтверждения.",
             parse_mode="HTML"
@@ -251,32 +248,24 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         configs = db_user_configs(user.id)
         if not configs:
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
-        # цикл должен идти ТОЛЬКО если конфиги есть!
+        
         for name, octet, end, priv, psk in configs:
-            print("ОТЛАДКА: отправляем конфиг для", name)
             conf = generate_client_config(priv, octet, psk)
-            print("CONF CONTENT:\n", conf)
             cfile = f"{user.id}_{name}.conf"
             qfile = f"{user.id}_{name}.png"
     
-            # Сохраняем конфиг
             with open(cfile, "w", encoding="utf-8") as f_conf:
                 f_conf.write(conf)
-            print("CONF FILE EXISTS:", os.path.exists(cfile), "SIZE:", os.path.getsize(cfile))
     
-            # Генерируем QR
             generate_qr(conf, qfile)
-            print("QR FILE EXISTS:", os.path.exists(qfile), "SIZE:", os.path.getsize(qfile))
     
             try:
-                # Отправляем .conf
                 with open(cfile, "rb") as f:
                     await context.bot.send_document(
                         chat_id=user.id,
                         document=InputFile(f, filename=f"{name}.conf"),
                         caption=f"{name} до {end}"
                     )
-                # Отправляем QR-код
                 with open(qfile, "rb") as f:
                     await context.bot.send_photo(
                         chat_id=user.id,
@@ -284,11 +273,11 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         caption="QR-код"
                     )
             except Exception as e:
-                print("ERROR SENDING FILES:", e)
                 await update.message.reply_text(f"Ошибка отправки файла: {e}")
             finally:
                 if os.path.exists(cfile): os.remove(cfile)
                 if os.path.exists(qfile): os.remove(qfile)
+
     elif text == "📋 Инструкция":
         await update.message.reply_text(
             f"📋 Инструкция по настройке VPN:\n\n"
@@ -314,6 +303,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Отвечаем быстро, даже ночью. Только не тупи, сразу пиши суть проблемы и свой ID: <code>{user.id}</code>",
             parse_mode="HTML"
         )
+
 async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user = query.from_user
@@ -347,44 +337,34 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             days=30
         )
         try:
-            # Автоматическое обновление сервера
             add_peer_to_wg(pub, octet, psk)
-            
-            # Сохраняем конфиг сервера (для persistent конфигурации)
             subprocess.run(["docker", "exec", "wg-easy", "wg-quick", "save", "wg0"], check=True)
         except Exception as e:
             logging.error(f"Ошибка обновления сервера: {str(e)}")
             await query.edit_message_text(f"Ошибка на сервере: {str(e)}")
             return
+        
         try:
-            add_peer_to_wg(pub, octet, psk)
-        except Exception as e:
-            return await query.edit_message_text(f"Ошибка WG: {e}")
-        try:
-            # Генерируем конфиг с PSK
             conf = generate_client_config(priv, octet, psk)
             cfile = f"{user.id}_{name}.conf"
             
-            # Сохраняем с правильным расширением
             with open(cfile, "w", encoding='utf-8') as f:
                 f.write(conf)
             
-            # Явно указываем filename при отправке
             with open(cfile, "rb") as f:
                 await context.bot.send_document(
-                    chat_id=user.id,
-                    document=InputFile(f, filename=f"wg_{name}.conf"),  # Явное указание имени
+                    chat_id=uid,
+                    document=InputFile(f, filename=f"wg_{name}.conf"),
                     caption=f"Конфиг до {end}"
                 )
             
-            # Генерация QR-кода
             qfile = f"{user.id}_{name}.png"
             generate_qr(conf, qfile)
             
             if os.path.exists(qfile):
                 with open(qfile, "rb") as f:
                     await context.bot.send_photo(
-                        chat_id=user.id,
+                        chat_id=uid,
                         photo=InputFile(f, filename=f"wg_{name}.png"),
                         caption="QR-код для импорта"
                     )
@@ -396,10 +376,10 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"Произошла ошибка: {str(e)}"
             )
         finally:
-            # Удаление временных файлов
             for f in [cfile, qfile]:
                 if os.path.exists(f):
                     os.remove(f)
+        
         db_payment_set_status(pid, "confirmed", name)
         return await query.edit_message_text(f"Выполнено: конфиг выдан ID {pid}")
 
@@ -423,8 +403,10 @@ def peer_watcher():
         for pub in active:
             if pub not in peers:
                 try:
-                    _, _, octet, _, _, psk = db_get_peer_by_public_key(pub)
-                    add_peer_to_wg(pub, octet, psk)
+                    peer_data = db_get_peer_by_public_key(pub)
+                    if peer_data:
+                        _, _, octet, _, _, psk = peer_data
+                        add_peer_to_wg(pub, octet, psk)
                 except:
                     pass
         time.sleep(1800)
