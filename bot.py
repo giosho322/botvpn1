@@ -227,7 +227,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif text == "📂 Мои конфиги":
-    configs = db_user_configs(user.id)
+        configs = db_user_configs(user.id)
     if not configs:
         return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
     for name, octet, end, priv in configs:
