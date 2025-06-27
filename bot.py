@@ -2,7 +2,7 @@ import os
 import subprocess
 import random
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 WG_DIR = "/root/.wg-easy"
 WG_CONF = os.path.join(WG_DIR, "wg0.conf")
@@ -34,11 +34,11 @@ def get_free_ip():
             return candidate
     raise Exception("No free IPs available")
 
-def add_client(update: Update, context: CallbackContext):
+async def add_client(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         args = update.message.text.split()
         if len(args) < 2:
-            update.message.reply_text("Usage: /add <client_name>")
+            await update.message.reply_text("Usage: /add <client_name>")
             return
         client_name = args[1]
 
@@ -76,16 +76,15 @@ PersistentKeepalive = 25
 
         # Send config to user
         with open(client_conf_path, "rb") as doc:
-            update.message.reply_document(document=doc, filename=f"{client_name}.conf")
+            await update.message.reply_document(document=doc, filename=f"{client_name}.conf")
 
     except Exception as e:
-        update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"Error: {e}")
 
 def main():
-    updater = Updater(BOT_TOKEN)
-    updater.dispatcher.add_handler(CommandHandler("add", add_client))
-    updater.start_polling()
-    updater.idle()
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("add", add_client))
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
