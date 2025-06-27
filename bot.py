@@ -130,8 +130,8 @@ def db_sub_add(user_id, config_name, public_key, private_key, preshared_key=None
     octet = last + 1
     end = now + datetime.timedelta(days=int(days))
     c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)
+        INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key, preshared_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",  # 8 параметров
+        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)  # 8 значений
     )
     conn.commit()
     conn.close()
