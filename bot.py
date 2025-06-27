@@ -60,7 +60,15 @@ def db_init():
     conn.close()
 
 # Функции работы с БД
-...  # здесь все функции БД без изменений
+def db_user_add(user_id, username, is_admin=False):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (id, username, is_admin) VALUES (?, ?, ?)",
+              (user_id, username, int(is_admin)))
+    conn.commit()
+    conn.close()
+
+# (Остальные функции работы с БД должны быть здесь: db_payment_add, db_payment_set_status, db_get_pending_payments, db_get_payment, db_sub_add, db_user_configs, db_get_peer_by_public_key, db_get_expired_peers, db_get_active_peers)
 
 def generate_keys():
     private_key = subprocess.getoutput("wg genkey")
