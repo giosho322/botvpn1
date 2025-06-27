@@ -9,7 +9,7 @@ from telegram import (
     InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 )
 from telegram.ext import (
-    Application, ContextTypes, MessageHandler, CallbackQueryHandler, filters
+    Application, ContextTypes, MessageHandler, CallbackQueryHandler, filters, CommandHandler
 )
 from threading import Thread
 import time
@@ -369,12 +369,16 @@ def peer_watcher():
                     logging.info(f"Ошибка добавления peer {pubkey}: {e}")
         time.sleep(1800)  # Проверять каждые 30 минут
 
-def main():
+def def main():
     db_init()
     # watcher в отдельном потоке
     Thread(target=peer_watcher, daemon=True).start()
     app = Application.builder().token(os.getenv("BOT_TOKEN")).build()
+    # Обработчик команды /start
+    app.add_handler(CommandHandler("start", start))
+    # Обработчик всех текстовых сообщений (кнопок)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
+    # Обработчик inline-кнопок (заявки, админка)
     app.add_handler(CallbackQueryHandler(admin_callbacks))
     app.run_polling()
 
