@@ -230,16 +230,31 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         configs = db_user_configs(user.id)
         if not configs:
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
-        for name, octet, end, priv in configs:
-            conf = generate_client_config(priv, octet)
-            cfile = f"{user.id}_{name}.conf"
-            qfile = f"{user.id}_{name}.png"
-            with open(cfile, "w") as f: f.write(conf)
-            generate_qr(conf, qfile)
-            await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
-            await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
-            os.remove(cfile)
-            os.remove(qfile)
+            for name, octet, end, priv in configs:
+                conf = generate_client_config(priv, octet)
+                cfile = f"{user.id}_{name}.conf"
+                qfile = f"{user.id}_{name}.png"
+                # Сохраняем конфиг
+                with open(cfile, "w") as f_conf:
+                    f_conf.write(conf)
+                # Генерируем QR
+                generate_qr(conf, qfile)
+                # Отправляем .conf с правильным именем
+                with open(cfile, "rb") as f:
+                    await context.bot.send_document(
+                        user.id,
+                        InputFile(f, filename=f"{name}.conf"),
+                        caption=f"{name} до {end}"
+                    )
+                # Отправляем QR-код с правильным именем файла
+                with open(qfile, "rb") as f:
+                    await context.bot.send_photo(
+                        user.id,
+                        InputFile(f, filename=f"{name}.png"),
+                        caption="QR-код"
+                    )
+                os.remove(cfile)
+                os.remove(qfile)
 
     elif text == "📋 Инструкция":
         await update.message.reply_text(
