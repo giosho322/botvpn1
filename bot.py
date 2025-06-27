@@ -193,10 +193,11 @@ def remove_peer_from_wg(public_key):
     else:
         subprocess.run(cmd, check=True)
 
-def generate_client_config(private_key, ip_last_octet, preshared_key=None):
-    config = f"""[Interface]
+def generate_client_config(private_key, public_key, preshared_key=None):
+    ip = get_next_ip()  # Функция из примера выше
+    return f"""[Interface]
 PrivateKey = {private_key}
-Address = 10.8.0.{ip_last_octet}/24
+Address = 10.8.0.{ip}/24
 DNS = 1.1.1.1
 
 [Peer]
@@ -345,6 +346,16 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             preshared_key=psk,
             days=30
         )
+        try:
+            # Автоматическое обновление сервера
+            add_peer_to_wg(pub, octet, psk)
+            
+            # Сохраняем конфиг сервера (для persistent конфигурации)
+            subprocess.run(["docker", "exec", "wg-easy", "wg-quick", "save", "wg0"], check=True)
+        except Exception as e:
+            logging.error(f"Ошибка обновления сервера: {str(e)}")
+            await query.edit_message_text(f"Ошибка на сервере: {str(e)}")
+            return
         try:
             add_peer_to_wg(pub, octet, psk)
         except Exception as e:
