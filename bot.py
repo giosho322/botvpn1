@@ -327,7 +327,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = f"sub_{pid}"
         priv, pub = generate_keys()
         psk = generate_psk()
-        octet, end, _ = db_sub_add(uid, name, pub, priv, psk)
+        octet, end, _ = db_sub_add(uid, name, pub, priv, psk, days=30)
         try:
             add_peer_to_wg(pub, octet, psk)
         except Exception as e:
