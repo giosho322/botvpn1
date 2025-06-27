@@ -179,12 +179,12 @@ def generate_keys():
     return private_key, public_key
 
 def add_peer_to_wg(public_key, ip_octet):
-    cmd = [
-        "wg", "set", WG_INTERFACE,
-        "peer", public_key,
-        "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"
-    ]
-    subprocess.run(cmd, check=True)
+   cmd = [
+    "docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
+    "peer", public_key,
+    "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"
+]
+subprocess.run(cmd, check=True)
 
 def remove_peer_from_wg(public_key):
     cmd = [
