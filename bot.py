@@ -232,28 +232,37 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
             for name, octet, end, priv in configs:
                 conf = generate_client_config(priv, octet)
+                print("CONF CONTENT:\n", conf)
                 cfile = f"{user.id}_{name}.conf"
                 qfile = f"{user.id}_{name}.png"
+            
                 # Сохраняем конфиг
                 with open(cfile, "w", encoding="utf-8") as f_conf:
                     f_conf.write(conf)
+                print("CONF FILE EXISTS:", os.path.exists(cfile), "SIZE:", os.path.getsize(cfile))
+            
                 # Генерируем QR
                 generate_qr(conf, qfile)
+                print("QR FILE EXISTS:", os.path.exists(qfile), "SIZE:", os.path.getsize(qfile))
+            
                 try:
-                    # Отправляем .conf с правильным именем
+                    # Отправляем .conf
                     with open(cfile, "rb") as f:
                         await context.bot.send_document(
-                            user.id,
-                            InputFile(f, filename=f"{name}.conf"),
+                            chat_id=user.id,
+                            document=InputFile(f, filename=f"{name}.conf"),
                             caption=f"{name} до {end}"
                         )
-                    # Отправляем QR-код с правильным именем файла
+                    # Отправляем QR-код
                     with open(qfile, "rb") as f:
                         await context.bot.send_photo(
-                            user.id,
-                            InputFile(f, filename=f"{name}.png"),
+                            chat_id=user.id,
+                            photo=InputFile(f, filename=f"{name}.png"),
                             caption="QR-код"
                         )
+                except Exception as e:
+                    print("ERROR SENDING FILES:", e)
+                    await update.message.reply_text(f"Ошибка отправки файла: {e}")
                 finally:
                     if os.path.exists(cfile): os.remove(cfile)
                     if os.path.exists(qfile): os.remove(qfile)
