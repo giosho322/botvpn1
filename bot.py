@@ -134,7 +134,7 @@ def db_sub_add(user_id, config_name, public_key, private_key, days=30):
     return octet, end, True
 
 def db_user_configs(user_id):
-    today = datetime.date.today()
+    today = datetime.date.today().isoformat()  # <-- теперь today строка '2025-06-27'
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("SELECT config_name, ip_last_octet, end_date, private_key FROM subs WHERE user_id=? AND end_date>=?",
