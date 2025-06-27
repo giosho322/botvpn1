@@ -235,26 +235,28 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cfile = f"{user.id}_{name}.conf"
                 qfile = f"{user.id}_{name}.png"
                 # Сохраняем конфиг
-                with open(cfile, "w") as f_conf:
+                with open(cfile, "w", encoding="utf-8") as f_conf:
                     f_conf.write(conf)
                 # Генерируем QR
                 generate_qr(conf, qfile)
-                # Отправляем .conf с правильным именем
-                with open(cfile, "rb") as f:
-                    await context.bot.send_document(
-                        user.id,
-                        InputFile(f, filename=f"{name}.conf"),
-                        caption=f"{name} до {end}"
-                    )
-                # Отправляем QR-код с правильным именем файла
-                with open(qfile, "rb") as f:
-                    await context.bot.send_photo(
-                        user.id,
-                        InputFile(f, filename=f"{name}.png"),
-                        caption="QR-код"
-                    )
-                os.remove(cfile)
-                os.remove(qfile)
+                try:
+                    # Отправляем .conf с правильным именем
+                    with open(cfile, "rb") as f:
+                        await context.bot.send_document(
+                            user.id,
+                            InputFile(f, filename=f"{name}.conf"),
+                            caption=f"{name} до {end}"
+                        )
+                    # Отправляем QR-код с правильным именем файла
+                    with open(qfile, "rb") as f:
+                        await context.bot.send_photo(
+                            user.id,
+                            InputFile(f, filename=f"{name}.png"),
+                            caption="QR-код"
+                        )
+                finally:
+                    if os.path.exists(cfile): os.remove(cfile)
+                    if os.path.exists(qfile): os.remove(qfile)
 
     elif text == "📋 Инструкция":
         await update.message.reply_text(
