@@ -238,8 +238,8 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_photo(user.id, InputFile(qfile), caption="QR-код")
             os.remove(cfile)
             os.remove(qfile)
-    elif text == "📋 Инструкция":
-    await update.message.reply_text(
+   elif text == "📋 Инструкция":
+        await update.message.reply_text(
         f"📋 Инструкция по настройке VPN:\n\n"
         "1️⃣ Установка WireGuard:\n"
         "• На ПК — скачайте клиент: https://www.wireguard.com/install/\n"
