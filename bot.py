@@ -238,7 +238,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Заявка #{pid} от @{user.username} ({user.id}) на {PRICE} USDT",
                 reply_markup=InlineKeyboardMarkup(
                     [[InlineKeyboardButton("Принять и выдать конфиг", callback_data=f"approve_{pid}")]]
-                )
+            )
         await update.message.reply_text(
             f"Переведи <b>{PRICE} USDT</b> на адрес:\n<code>{CRYPTO_WALLET}</code>\nПосле оплаты жди подтверждения.",
             parse_mode="HTML"
