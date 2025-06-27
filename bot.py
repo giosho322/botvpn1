@@ -196,17 +196,18 @@ def remove_peer_from_wg(public_key):
 def generate_client_config(private_key, ip_last_octet, preshared_key=None):
     config = f"""[Interface]
 PrivateKey = {private_key}
-Address = 10.8.0.{ip_last_octet}/24  # Используем ту же подсеть, что и wg-easy
+Address = 10.8.0.{ip_last_octet}/24
 DNS = 1.1.1.1
 
 [Peer]
 PublicKey = {SERVER_PUBLIC_KEY}
-PresharedKey = {preshared_key}  # Переносим перед AllowedIPs
+PresharedKey = {preshared_key}
 Endpoint = {SERVER_ENDPOINT}
-AllowedIPs = 0.0.0.0/0, ::/0
+AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 """
-    return config
+    # Убедимся, что в конце ровно один перенос строки
+    return config.rstrip('\n') + '\n'
 def generate_qr(text, path):
     qrcode.make(text).save(path)
 
