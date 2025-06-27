@@ -253,4 +253,4 @@ def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             generate_qr(conf, qpath)
             context.bot.send_document(user.id, InputFile(cpath), caption=f"{name} до {end}")
             context.bot.send_photo(user.id, InputFile(qpath), caption="QR-код")
-            os.remove(cpath); os.remove(qpath)\``
+            os.remove(cpath); os.remove(qpath)\
