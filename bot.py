@@ -237,7 +237,6 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with open(cfile, "w") as f: f.write(conf)
             generate_qr(conf, qfile)
             await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
-            await context.bot.send_document(user.id, InputFile(qfile), caption="QR-код")
             os.remove(cfile)
             os.remove(qfile)
 
