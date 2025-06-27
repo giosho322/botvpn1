@@ -188,7 +188,7 @@ def add_peer_to_wg(public_key, ip_octet):
 
 def remove_peer_from_wg(public_key):
     cmd = [
-        "wg", "set", WG_INTERFACE,
+        "docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
         "peer", public_key, "remove"
     ]
     subprocess.run(cmd, check=True)
@@ -361,7 +361,7 @@ def peer_watcher():
                 continue
             _, _, ip_octet, end_date, _ = peer
             # Проверяем, есть ли peer в текущем выводе wg show
-            peers_output = subprocess.getoutput(f"wg show {WG_INTERFACE} peers")
+            peers_output = subprocess.getoutput(f"docker exec wg-easy wg show {WG_INTERFACE} peers")
             if pubkey not in peers_output:
                 try:
                     add_peer_to_wg(pubkey, ip_octet)
