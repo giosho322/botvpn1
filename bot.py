@@ -291,7 +291,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         txt = "Заявки:\n" + "\n".join(f"{pid}:{uid}:{amt}" for pid,uid,amt in rows)
         await q.edit_message_text(txt)
-    elif data.startswith("approve_":
+    elif data.startswith("approve_")::
         pid = int(data.split("_")[1])
         pay = db_get_payment(pid)
         if not pay:
