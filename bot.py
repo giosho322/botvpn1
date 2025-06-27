@@ -236,7 +236,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             qfile = f"{user.id}_{name}.png"
             with open(cfile, "w") as f: f.write(conf)
             generate_qr(conf, qfile)
-            await context.bot.send_document(user.id, InputFile(cfile), caption=f"{name} до {end}")
+            await context.bot.send_document(uid, InputFile(cfile, filename=os.path.basename(cfile)), caption=f"Ваша подписка до {end}")
             os.remove(cfile)
             os.remove(qfile)
 
@@ -299,7 +299,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         qfile = f"{uid}_{name}.png"
         with open(cfile, "w") as f: f.write(conf)
         generate_qr(conf, qfile)
-        await context.bot.send_document(uid, InputFile(cfile), caption=f"Ваша подписка до {end}")
+        await context.bot.send_document(uid, InputFile(cfile, filename=os.path.basename(cfile)), caption=f"Ваша подписка до {end}")
         await context.bot.send_photo(uid, InputFile(qfile), caption="QR-код")
         os.remove(cfile)
         os.remove(qfile)
