@@ -369,7 +369,7 @@ def peer_watcher():
                     logging.info(f"Ошибка добавления peer {pubkey}: {e}")
         time.sleep(1800)  # Проверять каждые 30 минут
 
-def def main():
+def main():
     db_init()
     # watcher в отдельном потоке
     Thread(target=peer_watcher, daemon=True).start()
