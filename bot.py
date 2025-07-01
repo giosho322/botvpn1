@@ -48,7 +48,7 @@ def db_init():
         start_date DATE,
         end_date DATE,
         public_key TEXT,
-        private_key TEXT,
+        private_key TEXT
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
