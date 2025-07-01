@@ -49,7 +49,6 @@ def db_init():
         end_date DATE,
         public_key TEXT,
         private_key TEXT,
-        preshared_key TEXT
     )''')
     c.execute('''CREATE TABLE IF NOT EXISTS payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +108,7 @@ def db_get_payment(payment_id):
     conn.close()
     return row
 
-def db_sub_add(user_id, config_name, public_key, private_key, preshared_key=None, days=30):
+def db_sub_add(user_id, config_name, public_key, private_key, days=30):
     now = datetime.date.today()
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -130,8 +129,8 @@ def db_sub_add(user_id, config_name, public_key, private_key, preshared_key=None
     octet = last + 1
     end = now + datetime.timedelta(days=int(days))
     c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key, preshared_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (user_id, config_name, octet, now, end, public_key, private_key, preshared_key)
+        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, config_name, octet, now, end, public_key, private_key)
     )
     conn.commit()
     conn.close()
@@ -141,7 +140,7 @@ def db_user_configs(user_id):
     today = datetime.date.today().isoformat()
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT config_name, ip_last_octet, end_date, private_key, preshared_key FROM subs WHERE user_id=? AND end_date>=?",
+    c.execute("SELECT config_name, ip_last_octet, end_date, private_key FROM subs WHERE user_id=? AND end_date>=?",
               (user_id, today))
     rows = c.fetchall()
     conn.close()
@@ -150,7 +149,7 @@ def db_user_configs(user_id):
 def db_get_peer_by_public_key(public_key):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT user_id, config_name, ip_last_octet, end_date, private_key, preshared_key FROM subs WHERE public_key=?",
+    c.execute("SELECT user_id, config_name, ip_last_octet, end_date, private_key FROM subs WHERE public_key=?",
               (public_key,))
     row = c.fetchone()
     conn.close()
@@ -329,7 +328,6 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             config_name=name,
             public_key=pub,
             private_key=priv,
-            preshared_key=psk,
             days=30
         )
         try:
