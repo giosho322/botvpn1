@@ -271,7 +271,6 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if os.path.exists(cfile): os.remove(cfile)
                 if os.path.exists(qfile): os.remove(qfile)
 
-   ```python
     elif text == "📋 Инструкция":
             await update.message.reply_text(
                 "**Инструкция по настройке VPN для особо безнадёжных**\n"
