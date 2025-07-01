@@ -18,7 +18,7 @@ import time
 # Конфигурация
 DB = "autowgshop.db"
 ADMIN_IDS = [1203425573]
-CRYPTO_WALLET = "TNDYy3v4a5b6c7d8e9f0g1h2i3j4k5l6m"
+CRYPTO_WALLET = "Ожидайте я скоро приму вас"
 PRICE = 5
 WG_INTERFACE = "wg0"
 WG_SUBNET = "10.8.0"
