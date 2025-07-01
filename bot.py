@@ -474,8 +474,8 @@ if __name__ == "__main__":
     db_init()
     Thread(target=peer_watcher, daemon=True).start()
     with open('/root/.wg-easy/config.json', 'r') as f:
-    config = json.load(f)
-    BOT_TOKEN = config['bot_token']
+        config = json.load(f)
+        BOT_TOKEN = config['bot_token']
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
