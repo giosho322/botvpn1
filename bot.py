@@ -415,7 +415,7 @@ def peer_watcher():
 if __name__ == "__main__":
     db_init()
     Thread(target=peer_watcher, daemon=True).start()
-    app = Application.builder().token(os.getenv("7582329702:AAHUsRYNwzPoJ61D9dhw8qFiK2ukZjpUG98")).build()
+    app = Application.builder().token(os.getenv(7582329702:AAHUsRYNwzPoJ61D9dhw8qFiK2ukZjpUG98)).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     app.add_handler(CallbackQueryHandler(admin_callbacks))
