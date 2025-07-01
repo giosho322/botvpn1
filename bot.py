@@ -179,21 +179,17 @@ def generate_keys():
     pub = subprocess.getoutput(f"echo '{priv}' | wg pubkey")
     return priv, pub
 
-def add_peer_to_wg(public_key, ip_octet, preshared_key=None):
+def add_peer_to_wg(public_key, ip_octet,):
     cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
            "peer", public_key, "allowed-ips", f"{WG_SUBNET}.{ip_octet}/32"]
-    if preshared_key:
-        cmd += ["preshared-key", "/dev/stdin"]
-        subprocess.run(cmd, input=preshared_key.encode(), check=True)
-    else:
-        subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True)
 
 def remove_peer_from_wg(public_key):
     cmd = ["docker", "exec", "wg-easy", "wg", "set", WG_INTERFACE,
            "peer", public_key, "remove"]
     subprocess.run(cmd, check=True)
 
-def generate_client_config(private_key, ip_octet, preshared_key=None):
+def generate_client_config(private_key, ip_octet,):
     return f"""[Interface]
 PrivateKey = {private_key}
 Address = {WG_SUBNET}.{ip_octet}/32
