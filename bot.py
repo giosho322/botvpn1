@@ -15,9 +15,6 @@ from telegram.ext import (
 from threading import Thread
 import time
 
-def generate_psk():
-    return subprocess.getoutput("wg genpsk")
-
 # Конфигурация
 DB = "autowgshop.db"
 ADMIN_IDS = [1203425573]
@@ -244,8 +241,8 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not configs:
             return await update.message.reply_text("У вас нет активных конфигов.", reply_markup=get_main_keyboard(user.id))
         
-        for name, octet, end, priv, psk in configs:
-            conf = generate_client_config(priv, octet, psk)
+        for name, octet, end, priv, in configs:
+            conf = generate_client_config(priv, octet)
             cfile = f"{user.id}_{name}.conf"
             qfile = f"{user.id}_{name}.png"
     
@@ -322,7 +319,6 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         uid, _ = pay
         name = f"sub_{pid}"
         priv, pub = generate_keys()
-        psk = generate_psk()
         octet, end, _ = db_sub_add(
             user_id=uid,
             config_name=name,
@@ -331,7 +327,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             days=30
         )
         try:
-            add_peer_to_wg(pub, octet, psk)
+            add_peer_to_wg(pub, octet)
             subprocess.run(["docker", "exec", "wg-easy", "wg-quick", "save", "wg0"], check=True)
         except Exception as e:
             logging.error(f"Ошибка обновления сервера: {str(e)}")
@@ -339,7 +335,7 @@ async def admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         try:
-            conf = generate_client_config(priv, octet, psk)
+            conf = generate_client_config(priv, octet)
             cfile = f"{user.id}_{name}.conf"
             
             with open(cfile, "w", encoding='utf-8') as f:
@@ -399,8 +395,8 @@ def peer_watcher():
                 try:
                     peer_data = db_get_peer_by_public_key(pub)
                     if peer_data:
-                        _, _, octet, _, _, psk = peer_data
-                        add_peer_to_wg(pub, octet, psk)
+                        _, _, octet, _, _,
+                        add_peer_to_wg(pub, octet)
                 except:
                     pass
         time.sleep(1800)
