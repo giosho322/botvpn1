@@ -129,7 +129,7 @@ def db_sub_add(user_id, config_name, public_key, private_key, days=30):
     octet = last + 1
     end = now + datetime.timedelta(days=int(days))
     c.execute(
-        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO subs (user_id, config_name, ip_last_octet, start_date, end_date, public_key, private_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (user_id, config_name, octet, now, end, public_key, private_key)
     )
     conn.commit()
