@@ -201,7 +201,6 @@ DNS = 1.1.1.1
 
 [Peer]
 PublicKey = {SERVER_PUBLIC_KEY}
-PresharedKey = {preshared_key}
 Endpoint = {SERVER_ENDPOINT}
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
