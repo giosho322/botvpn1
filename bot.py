@@ -4,6 +4,7 @@ import datetime
 import logging
 import subprocess
 import qrcode
+import json
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -473,7 +474,10 @@ def peer_watcher():
 if __name__ == "__main__":
     db_init()
     Thread(target=peer_watcher, daemon=True).start()
-    app = Application.builder().token(os.getenv("BOT_TOKEN")).build()
+    with open('/root/.wg-easy/config.json', 'r') as f:
+    config = json.load(f)
+    BOT_TOKEN = config['bot_token']
+    app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     app.add_handler(CallbackQueryHandler(admin_callbacks))
